@@ -12,10 +12,9 @@ services:
     env_file:
       - .env
 
-    # volumes:
-    #   - .:/app
-    #   # keep installed deps from being shadowed by the bind mount
-    #   - /app/.venv
+    volumes:
+      - ./app:/app
+  
 
 
     restart: always
