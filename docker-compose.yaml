@@ -7,35 +7,17 @@ services:
     container_name: shopping-project
 
     ports:
-      - "${API_PORT:-8000}:8000"
+      - "8000:8000"
 
     env_file:
       - .env
 
-    # environment:
-    #   APP_ENV: ${APP_ENV:-development}
-    #   API_HOST: ${API_HOST:-0.0.0.0}
-    #   API_PORT: 8000
+    # volumes:
+    #   - .:/app
+    #   # keep installed deps from being shadowed by the bind mount
+    #   - /app/.venv
 
-    volumes:
-      - .:/app
 
-    command:
-      [
-        "uvicorn",
-        "main:app",
-        "--host",
-        "0.0.0.0",
-        "--port",
-        "8000",
-        "--reload"
-      ]
+    restart: always
 
-    restart: unless-stopped
 
-    networks:
-      - shopping-network
-
-networks:
-  shopping-network:
-    driver: bridge
