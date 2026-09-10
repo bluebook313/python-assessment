@@ -1,6 +1,6 @@
 from fastapi import APIRouter
-from api.v1 import order_interface, product
+from api.v1 import orders, product
 
 router = APIRouter()
-router.include_router(order_interface.router)
-router.include_router(product.router, tags=["admin"])
+router.include_router(orders.router, tags=["orders"])
+router.include_router(product.router, tags=["product"])
