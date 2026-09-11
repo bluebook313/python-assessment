@@ -2,7 +2,8 @@ from fastapi import Response
 
 
 class CustoneResponse(Response):
-    def response(self, details, status):
+    @staticmethod
+    def response(details, status):
         return {
             "Status":status,
             "Details":details
