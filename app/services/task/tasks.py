@@ -1,7 +1,8 @@
 import asyncio
 
-from services.order.order import Order
-from services.product.product import Product
+from services.order.order import OrderService
+from services.product.product import ProductService
+from utils.database.connection import get_db
 
 class Task:
     # create tasktype 
@@ -22,36 +23,55 @@ class Task:
     
 
 class GetOrdersTasks:
+    # TODO -> for each request , do we need any new db obj
     @staticmethod
     async def run(*args, **kwargs):
-        return await Order().get_all_item()
+        with get_db() as db:
+            return await OrderService(db=db).get_all_item()
  
 class GetOrderByIdTasks:
     @staticmethod
     async def run(*args, **kwargs):
-        return await Order().get_item(kwargs.get("order_id"))
+        with get_db() as db:
+            with get_db() as db:
+                return await OrderService(db=db).get_item(kwargs.get("order_id"))
 
 class PayOrderByIdTasks:
     @staticmethod
     async def run(*args, **kwargs):
-        return await Order().pay(kwargs.get("order_id"))
+        with get_db() as db:
+            return await OrderService().pay(kwargs.get("order_id"))
 
 class CancelOrderByIdTasks:
     @staticmethod
     async def run(*args, **kwargs):
-        return await Order().cancel(kwargs.get("order_id"))
+        with get_db() as db:
+            return await OrderService().cancel(kwargs.get("order_id"))
 
 
 
 class GetProductsTasks:
     @staticmethod
     async def run(*args, **kwargs):
-        return await Product().get_all_item()
+        with get_db() as db:
+            return await ProductService(db=db).get_all_item()
 
 
 
 class GetProductByIdTasks:
     @staticmethod
     async def run(*args, **kwargs):
-        return await Product().get_item(kwargs.get("product_id"))
+        with get_db() as db:
+            return await ProductService(db=db).get_item(kwargs.get("product_id"))
+
+
+
+class AddProductTasks:
+    @staticmethod
+    async def run(*args, **kwargs):
+        name = kwargs.get("name")
+        count = kwargs.get("count")
+        price = kwargs.get("price")
+        with get_db() as db:
+            return await ProductService(db=db).add_item(name=name, count=count, price=price)
 
