@@ -1,4 +1,4 @@
-from sqlalchemy.ext.declarative import declarative_base
+from utils.database.connection import Base, engine
 from schemas.config import OrderStatus
 from datetime import datetime
 from sqlalchemy import (
@@ -10,7 +10,6 @@ from sqlalchemy import (
     String,
 )
 
-Base = declarative_base()
 
 class Product(Base):
     __tablename__ = "products"
