@@ -44,7 +44,8 @@ class OrderItem(Base):
     quantity =  Column(Integer, nullable=False)
     total_order_price =  Column(Float, nullable=False)
     
-    UniqueConstraint("order_id", "product_id")
-
-  
+    __table_args__ = (
+        UniqueConstraint("order_id", "product_id"),
+    )
+    
 Base.metadata.create_all(engine)
