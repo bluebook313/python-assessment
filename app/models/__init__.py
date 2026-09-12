@@ -1,6 +1,5 @@
 from utils.database.connection import Base, engine
 from schemas.config import OrderStatus
-from datetime import datetime
 from sqlalchemy import (
     Column,
     DateTime,
@@ -10,7 +9,6 @@ from sqlalchemy import (
     String,
 )
 
-
 class Product(Base):
     __tablename__ = "products"
 
@@ -19,7 +17,6 @@ class Product(Base):
     price =  Column(Float, nullable=False)
     count =  Column(Integer, nullable=False, default=0)
 
-
 class Customer(Base):
     __tablename__ = "customers"
 
@@ -27,26 +24,23 @@ class Customer(Base):
     name =  Column(String(200), nullable=False)
     email =  Column(String(255), nullable=False)
 
-
-
 class Order(Base):
-    __tablename__ = "orders"
+    __tablename__ = "orders"    
+    
+    id =  Column(Integer, primary_key=True)
+    customer_id =  Column(ForeignKey("customers.id"), nullable=False,)
+    total_price =  Column(Float, nullable=True)
+    status =Column(String(30), default=OrderStatus.PENDING.value, nullable=False,)
+    created_at =Column(DateTime, nullable=False,)
+
+ 
+class OrderItem(Base):
+    __tablename__ = "order_items"
 
     id =  Column(Integer, primary_key=True)
+    order_id =  Column(ForeignKey("orders.id"), nullable=False)
+    product_id =  Column(ForeignKey("products.id"), nullable=False)    
+    quantity =  Column(Integer, nullable=False)
+    total_order_price =  Column(Float, nullable=False)
 
-    customer_id =  Column(
-        ForeignKey("customers.id"),
-        nullable=False,
-    )
-    status =  Column(
-        String(30),
-        default=OrderStatus.PENDING.value,
-        nullable=False,
-    )
-    created_at =Column(
-        DateTime,
-        default=datetime.utcnow,
-        nullable=False,
-    )
-
-
+Base.metadata.create_all(engine)

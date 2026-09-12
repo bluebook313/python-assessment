@@ -6,6 +6,7 @@ class OrderStatus(str, Enum):
     PROCESSING  = "processing"
     COMPLETED   = "completed"
     CANCELLED   = "cancelled"
+    FAILED      =  "FAILED"
 
 
 class TaskEnum(str, Enum):

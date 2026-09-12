@@ -5,3 +5,9 @@ class ProductStructure(BaseModel):
     price: float
     product_count: int
 
+
+class OrderItemStructure(BaseModel):
+    order_id : int
+    product_count :int
+    product_id : int
+
