@@ -12,9 +12,6 @@ class OrderStatus(str, Enum):
     FAILED      =  "FAILED"
 
 
-class TaskEnum(str, Enum):
-    pass
-
 DATABASE_URL = "sqlite:///orders.db"  
 ProjectBaseFolder = Path(__file__).resolve().parent.resolve().parent
 
