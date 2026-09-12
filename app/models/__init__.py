@@ -1,6 +1,7 @@
 from utils.database.connection import Base, engine
 from schemas.config import OrderStatus
 from sqlalchemy import (
+    UniqueConstraint,
     Column,
     DateTime,
     Float,
@@ -42,5 +43,13 @@ class OrderItem(Base):
     product_id =  Column(ForeignKey("products.id"), nullable=False)    
     quantity =  Column(Integer, nullable=False)
     total_order_price =  Column(Float, nullable=False)
+
+    __table_args__ = (
+        UniqueConstraint(
+            "order_id",
+            "product_id",
+            name="uniqe_order_item_order_product"
+        ),
+    )
 
 Base.metadata.create_all(engine)
