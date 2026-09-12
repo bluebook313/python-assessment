@@ -1,11 +1,14 @@
-from fastapi import Response
+from fastapi.responses import JSONResponse
 
 
-class CustoneResponse(Response):
+class CustomResponse:
+
     @staticmethod
-    def response(details, status, result):
-        return {
-            "Status":status,
-            "Details":details,
-            "Result":result
-        }
+    def response(status, details, result):
+        return JSONResponse(
+            status_code=status,
+            content={
+                "Details": details,
+                "Result": result,
+            },
+        )

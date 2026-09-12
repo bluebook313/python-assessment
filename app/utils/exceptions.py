@@ -6,9 +6,4 @@ class ServiceException(Exception):
     pass
 
 
-class ApiInterfaceException(Exception):
-    pass
-
-
-
 

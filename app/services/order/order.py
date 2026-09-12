@@ -87,7 +87,7 @@ class OrderService:
         
     async def get_item(self, order_id: int):
         if order_id <= 0:
-            raise ValueError("The cuorder_idstomer_id must  bigger than 0 ")
+            raise ServiceException("The cuorder_idstomer_id must  bigger than 0 ")
         order_obj =  self.db.get(Order, order_id)
         if not order_obj:
             raise ServiceException(f"The customer_id {order_obj} is not exist")
@@ -104,7 +104,7 @@ class OrderService:
         Add empty basket to initialize a new ordering process
         """
         if customer_id <= 0:
-            raise ValueError("The customer_id must  bigger than 0 ")
+            raise ServiceException("The customer_id must  bigger than 0 ")
         
         custome_obj =  self.db.get(Customer, customer_id)
 
@@ -121,7 +121,7 @@ class OrderService:
 
     async def remove_order(self, order_id):
         if order_id <= 0:
-            raise ValueError("The order_id must  bigger than 0 ")
+            raise ServiceException("The order_id must  bigger than 0 ")
         
         order_obj =  self.db.get(Order, order_id)
         
@@ -132,7 +132,7 @@ class OrderService:
 
     async def cancel(self, order_id):
         if order_id <= 0:
-            raise ValueError("The order_id must  bigger than 0 ")
+            raise ServiceException("The order_id must  bigger than 0 ")
         
         order_obj =  self.db.get(Order, order_id)
 
@@ -159,7 +159,7 @@ class OrderService:
     
     async def complete(self, order_id):
         if order_id <= 0:
-            raise ValueError("The order_id must  bigger than 0 ")
+            raise ServiceException("The order_id must  bigger than 0 ")
         
         order_obj =  self.db.get(Order, order_id)
         
@@ -178,7 +178,7 @@ class OrderService:
 
     async def pay(self, order_id) -> None:
         if order_id <= 0:
-            raise ValueError("The order_id must  bigger than 0 ")
+            raise ServiceException("The order_id must  bigger than 0 ")
         
         order_obj =  self.db.query(Order).filter(Order.id == order_id).first()
         
@@ -206,7 +206,7 @@ class OrderService:
         the payment operation successfully finish and products must to shiping
         """
         if order_id <= 0:
-            raise ValueError("The order_id must  bigger than 0 ")
+            raise ServiceException("The order_id must  bigger than 0 ")
         
         order_obj =  self.db.query(Order).filter(Order.id == order_id).first()
         

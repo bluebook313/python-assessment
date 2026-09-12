@@ -12,7 +12,7 @@ class ProductService:
         if len(name)>200:
             raise ServiceException("The product name is too long !")
         if price<=0 or count<=0:
-            raise ValueError("The price or product count must  bigger than 0 ")
+            raise ServiceException("The price or product count must  bigger than 0 ")
         product = Product(
             name=name,
             price=price,
@@ -35,7 +35,7 @@ class ProductService:
 
     async def get_item(self, product_id: int):
         if product_id<=0 :
-            raise ValueError("The product_id  must bigger than 0 ")
+            raise ServiceException("The product_id  must bigger than 0 ")
         product =  self.db.get(Product, product_id)
         if not product:
             raise ServiceException(f"The product with id {product_id} is not exist")

@@ -13,9 +13,9 @@ class CustomerService:
         return customer info
         """
         if customer_id <= 0:
-            raise ValueError("The customer_id must  bigger than 0 ")
+            raise ServiceException("The customer_id must  bigger than 0 ")
         if not isinstance(customer_id, int):
-            raise ValueError("The customer_id must  integer ")
+            raise ServiceException("The customer_id must  integer ")
         
         customer_obj = self.db.query(Customer).where(Customer.id == customer_id).first()
         if not customer_obj:

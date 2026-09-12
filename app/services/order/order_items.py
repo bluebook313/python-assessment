@@ -14,7 +14,7 @@ class OrderItemsService:
         add product to basket
         """
         if order_id <= 0 or product_id<=0 or product_count<=0:
-            raise ValueError("The order_id or product_id or product_count  must  bigger than 0 ")
+            raise ServiceException("The order_id or product_id or product_count  must  bigger than 0 ")
         
         order_obj =  self.db.query(Order).filter(Order.id == order_id).first()
         product_obj =  self.db.query(Product).filter(Product.id == product_id).first()
@@ -45,7 +45,7 @@ class OrderItemsService:
         remove product from basket
         """
         if order_id <= 0 or product_id<=0 or count<=0:
-            raise ValueError("The order_id or product_id or count  must  bigger than 0 ")
+            raise ServiceException("The order_id or product_id or count  must  bigger than 0 ")
 
         order_obj =  self.db.query(Order).filter(Order.id == order_id).first()
         product_obj =  self.db.query(Product).filter(Product.id == product_id).first()
