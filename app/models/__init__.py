@@ -48,4 +48,4 @@ class OrderItem(Base):
         UniqueConstraint("order_id", "product_id"),
     )
     
-Base.metadata.create_all(engine)
+# Base.metadata.create_all(engine) #Remove this line when use alembic as database manager
