@@ -40,8 +40,20 @@ async def get_products():
 
 @router.get("/products/{product_id}")
 async def  get_product(product_id: int):
+    if product_id<=0:
+        return CustomResponse.response(
+                    status=http_status.HTTP_400_BAD_REQUEST,
+                    details="input must bigger than 0",
+                    result={},
+    )
     return await handle_task(task_class=GetProductByIdTasks, product_id=product_id)
 
 @router.post("/products/add_product/")
 async def  add_products(params:ProductStructure): 
+    if params.price<=0 or params.product_count<=0:
+        return CustomResponse.response(
+                status=http_status.HTTP_400_BAD_REQUEST,
+                details="input must bigger than 0",
+                result={},
+    )
     return await handle_task(task_class=AddProductTasks, name=params.name, count=params.product_count, price=params.price)

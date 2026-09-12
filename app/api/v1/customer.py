@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from fastapi import status as http_status
+from fastapi import HTTPException,  status as http_status
 from utils.api_response.response import CustomResponse
 router = APIRouter()
 
@@ -33,6 +33,12 @@ async def handle_task(task_class, **kwargs):
 
 @router.get("/customer/{customer_id}")
 async def  get_user_info(customer_id: int):
+    if customer_id<=0:
+        return CustomResponse.response(
+                    status=http_status.HTTP_400_BAD_REQUEST,
+                    details="input must bigger than 0",
+                    result={},
+    )
     return await handle_task(task_class=GetCustomerInfoTasks, customer_id=customer_id)
 
 @router.post("/customer/add_customer/")
