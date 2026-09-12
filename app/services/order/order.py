@@ -14,73 +14,242 @@ class OrderService:
     def __init__(self, db: Session):
         self.db = db
 
-    # --------------------------------------------------
-    # Utils
-    # --------------------------------------------------
+    # ==================================================
+    # Transaction Helper
+    # ==================================================
+
+    def _rollback(self):
+        try:
+            self.db.rollback()
+        except Exception as e:
+            log.error(f"Rollback failed: {e}")
+
+    def _change_status(
+        self,
+        order_id: int,
+        from_status: str,
+        to_status: str,
+    ):
+        try:
+            result = self.db.execute(
+                update(Order)
+                .where(
+                    Order.id == order_id,
+                    Order.status == from_status,
+                )
+                .values(status=to_status)
+            )
+
+            if result.rowcount != 1:
+                raise ServiceException(
+                    f"Can not change order {order_id} "
+                    f"from {from_status} to {to_status}"
+                )
+
+            return result
+
+        except ServiceException:
+            raise
+
+        except Exception as e:
+            log.error(
+                f"Database error while changing order "
+                f"{order_id}: {e}"
+            )
+            raise ServiceException(
+                "Database error while changing order"
+            )
+
+    def _delete_order_items(self, order_id: int):
+
+        try:
+            self.db.execute(
+                delete(OrderItem)
+                .where(OrderItem.order_id == order_id)
+            )
+
+        except Exception as e:
+            log.error(
+                f"Error deleting items of order "
+                f"{order_id}: {e}"
+            )
+            raise ServiceException(
+                "Could not delete order items"
+            )
+
+    def _delete_order(self, order_id: int):
+
+        try:
+            result = self.db.execute(
+                delete(Order)
+                .where(Order.id == order_id)
+            )
+
+            if result.rowcount != 1:
+                raise ServiceException(
+                    f"Order {order_id} does not exist"
+                )
+
+        except ServiceException:
+            raise
+
+        except Exception as e:
+            log.error(
+                f"Error deleting order {order_id}: {e}"
+            )
+            raise ServiceException(
+                "Could not delete order"
+            )
+
+    def _calculate_total(self, order_id: int) -> float:
+
+        try:
+            items = self.db.scalars(
+                select(OrderItem)
+                .where(OrderItem.order_id == order_id)
+            ).all()
+
+            return sum(
+                item.total_order_price
+                for item in items
+            )
+
+        except Exception as e:
+            log.error(
+                f"Error calculating order total "
+                f"{order_id}: {e}"
+            )
+            raise ServiceException(
+                "Could not calculate order total"
+            )
+
+    # ==================================================
+    # Payment
+    # ==================================================
 
     async def _failed_paid_transaction(self, order_id):
-        log.error("Failed to pay money for this transaction")
 
-        result = self.db.execute(
-            update(Order)
-            .where(
-                Order.id == order_id,
-            )
-            .values(status=OrderStatus.FAILED.value)
+        log.error(
+            "Failed to pay money for this transaction"
         )
 
-        self.db.commit()
+        try:
+            self._change_status(
+                order_id,
+                OrderStatus.PROCESSING.value,
+                OrderStatus.FAILED.value,
+            )
 
+            self.db.commit()
+
+        except ServiceException:
+            self._rollback()
+            raise
+
+        except Exception as e:
+            self._rollback()
+
+            log.error(
+                f"Failed payment transaction "
+                f"for order {order_id}: {e}"
+            )
+
+            raise ServiceException(
+                "Failed to update payment status"
+            )
 
     async def _success_paid_transaction(self, order_id):
-        result = self.db.execute(
-            update(Order)
-            .where(
-                Order.id == order_id
-            )
-            .values(status=OrderStatus.PAID.value)
-        )
 
-        self.db.commit()
+        try:
+            self._change_status(
+                order_id,
+                OrderStatus.PROCESSING.value,
+                OrderStatus.PAID.value,
+            )
+
+            self.db.commit()
+
+        except ServiceException:
+            self._rollback()
+            raise
+
+        except Exception as e:
+            self._rollback()
+
+            log.error(
+                f"Failed to complete payment "
+                f"for order {order_id}: {e}"
+            )
+
+            raise ServiceException(
+                "Failed to update payment status"
+            )
+
+    # ==================================================
+    # Background Operations
+    # ==================================================
 
     async def _send_notification(self, order_id):
-        # Call customer that paied finished 
-        log.info(f"Notification sent for order {order_id}")
 
-    async def _save_accounting(self, order_id):
-        self.db.execute(
-            update(Order)
-            .where(
-                Order.id == order_id,
-                Order.status == OrderStatus.PAID.value
+        try:
+            log.info(
+                f"Notification sent for order {order_id}"
             )
-            .values(status=OrderStatus.COMPLETED.value)
-        )
 
-        self.db.commit()
-
-        log.info(f"Accounting saved for order {order_id}")
+        except Exception as e:
+            log.error(
+                f"Notification failed for order "
+                f"{order_id}: {e}"
+            )
+            raise
 
     async def _send_to_shipping(self, order_id):
-        # Call Shipping webhook
-        log.info(f"Order {order_id} sent to shipping")
 
-    def _calculate_total(self, order_id) -> float:
-        items = self.db.scalars(
-            select(OrderItem)
-            .where(OrderItem.order_id == order_id)
-        ).all()
+        try:
+            log.info(
+                f"Order {order_id} sent to shipping"
+            )
 
-        return sum(item.total_order_price for item in items)
+        except Exception as e:
+            log.error(
+                f"Shipping failed for order "
+                f"{order_id}: {e}"
+            )
+            raise
 
-    async def _call_dargah_pardakht(self):
-        log.info("Start connection to payment gateway")
+    async def _save_accounting(self, order_id):
 
-        await asyncio.sleep(3)
+        try:
+            self._change_status(
+                order_id,
+                OrderStatus.PAID.value,
+                OrderStatus.COMPLETED.value,
+            )
 
-        log.info("Successfully called payment gateway")
+            self.db.commit()
+
+            log.info(
+                f"Accounting saved for order {order_id}"
+            )
+
+        except ServiceException:
+            self._rollback()
+            raise
+
+        except Exception as e:
+            self._rollback()
+
+            log.error(
+                f"Accounting failed for order "
+                f"{order_id}: {e}"
+            )
+
+            raise ServiceException(
+                "Failed to save accounting"
+            )
 
     async def _process_after_payment(self, order_id):
+
         steps = [
             self._send_notification,
             self._send_to_shipping,
@@ -88,233 +257,335 @@ class OrderService:
         ]
 
         for step in steps:
-            task = asyncio.create_task(step(order_id))
-            task.add_done_callback(self._handle_task_result)
+
+            task = asyncio.create_task(
+                step(order_id)
+            )
+
+            task.add_done_callback(
+                self._handle_task_result
+            )
 
     def _handle_task_result(self, task):
+
         try:
             task.result()
-        except Exception as e:
-            log.error(f"Background task failed: {e}")
 
-    # --------------------------------------------------
-    # Business Core
-    # --------------------------------------------------
+        except Exception as e:
+            log.error(
+                f"Background task failed: {e}"
+            )
+
+    async def _call_dargah_pardakht(self):
+
+        try:
+            log.info(
+                "Start connection to payment gateway"
+            )
+
+            await asyncio.sleep(3)
+
+            log.info(
+                "Successfully called payment gateway"
+            )
+
+        except Exception as e:
+            log.error(
+                f"Payment gateway error: {e}"
+            )
+            raise ServiceException(
+                "Payment gateway failed"
+            )
+
+    # ==================================================
+    # Query
+    # ==================================================
 
     async def get_all_item(self):
 
-        orders = self.db.scalars(
-            select(Order)
-        ).all()
+        try:
+            orders = self.db.scalars(
+                select(Order)
+            ).all()
 
-        return {
-            order.id: {
+            return {
+                order.id: {
+                    "CustomerID": order.customer_id,
+                    "TotalPrice": order.total_price,
+                    "OrderStatus": order.status,
+                    "OrderCreationTime": order.created_at,
+                }
+                for order in orders
+            }
+
+        except Exception as e:
+            log.error(
+                f"Error getting orders: {e}"
+            )
+            raise ServiceException(
+                "Could not get orders"
+            )
+
+    async def get_item(self, order_id: int):
+
+        try:
+            order = self.db.get(
+                Order,
+                order_id
+            )
+
+            if not order:
+                raise ServiceException(
+                    f"Order {order_id} does not exist"
+                )
+
+            return {
                 "CustomerID": order.customer_id,
                 "TotalPrice": order.total_price,
                 "OrderStatus": order.status,
                 "OrderCreationTime": order.created_at,
             }
-            for order in orders
-        }
 
-    async def get_item(self, order_id: int):
+        except ServiceException:
+            raise
 
-        if order_id <= 0:
+        except Exception as e:
+            log.error(
+                f"Error getting order "
+                f"{order_id}: {e}"
+            )
             raise ServiceException(
-                "The order_id must be bigger than 0"
+                "Could not get order"
             )
 
-        order = self.db.get(Order, order_id)
+    # ==================================================
+    # Create
+    # ==================================================
 
-        if not order:
-            raise ServiceException(
-                f"The order_id {order_id} does not exist"
+    async def add_new_empty_order(
+        self,
+        customer_id: int
+    ):
+
+        try:
+            customer = self.db.get(
+                Customer,
+                customer_id
             )
 
-        return {
-            "CustomerID": order.customer_id,
-            "TotalPrice": order.total_price,
-            "OrderStatus": order.status,
-            "OrderCreationTime": order.created_at,
-        }
+            if not customer:
+                raise ServiceException(
+                    f"Customer {customer_id} does not exist"
+                )
 
-    async def add_new_empty_order(self, customer_id):
-
-        if customer_id <= 0:
-            raise ServiceException(
-                "The customer_id must be bigger than 0"
+            order = Order(
+                customer_id=customer_id,
+                created_at=datetime.now(),
             )
 
-        customer = self.db.get(Customer, customer_id)
+            self.db.add(order)
 
-        if not customer:
-            raise ServiceException(
-                f"The customer_id {customer_id} does not exist"
+            self.db.commit()
+
+            return True
+
+        except ServiceException:
+            self._rollback()
+            raise
+
+        except Exception as e:
+            self._rollback()
+
+            log.error(
+                f"Error creating order: {e}"
             )
-
-        new_order = Order(
-            customer_id=customer_id,
-            created_at=datetime.now(),
-        )
-
-        self.db.add(new_order)
-        self.db.commit()
-        self.db.refresh(new_order)
-
-        return True
-
-    async def remove_order(self, order_id):
-
-        if order_id <= 0:
-            raise ServiceException(
-                "The order_id must be bigger than 0"
-            )
-
-        result = self.db.execute(
-            delete(Order)
-            .where(Order.id == order_id)
-        )
-
-        self.db.commit()
-
-        if result.rowcount != 1:
-            raise ServiceException(
-                f"The order_id {order_id} does not exist"
-            )
-
-    async def cancel(self, order_id):
-
-        if order_id <= 0:
-            raise ServiceException(
-                "The order_id must be bigger than 0"
-            )
-
-        # Atomic state transition 
-        result = self.db.execute(
-            update(Order)
-            .where(
-                Order.id == order_id,
-                Order.status == OrderStatus.PROCESSING.value # check order status
-            )
-            .values(status=OrderStatus.CANCELLED.value)
-        )
-
-        if result.rowcount != 1:
-            self.db.rollback()
 
             raise ServiceException(
-                f"Can not cancel order {order_id}"
+                "Could not create order"
             )
 
-        # Delete order items in the same transaction
-        self.db.execute(
-            delete(OrderItem)
-            .where(OrderItem.order_id == order_id)
-        )
+    # ==================================================
+    # Delete
+    # ==================================================
 
-        self.db.commit()
+    async def remove_order(self, order_id: int):
 
-        log.info(
-            f"Order {order_id} was cancelled by user"
-        )
+        try:
+            self._delete_order(order_id)
 
-        return True
+            self.db.commit()
 
-    async def complete(self, order_id):
+        except ServiceException:
+            self._rollback()
+            raise
 
-        if order_id <= 0:
+        except Exception as e:
+            self._rollback()
+
+            log.error(
+                f"Error removing order "
+                f"{order_id}: {e}"
+            )
+
             raise ServiceException(
-                "The order_id must be bigger than 0"
+                "Could not remove order"
             )
 
-        result = self.db.execute(
-            update(Order)
-            .where(
-                Order.id == order_id,
-                Order.status == OrderStatus.PAID.value # check order status
+    # ==================================================
+    # Cancel
+    # ==================================================
+
+    async def cancel(self, order_id: int):
+
+        try:
+
+            self._change_status(
+                order_id,
+                OrderStatus.PROCESSING.value,
+                OrderStatus.CANCELLED.value,
             )
-            .values(status=OrderStatus.COMPLETED.value)
-        )
 
-        self.db.commit()
+            self._delete_order_items(order_id)
 
-        if result.rowcount != 1:
+            self.db.commit()
+
+            log.debug(
+                f"Order {order_id} was cancelled"
+            )
+
+            return True
+
+        except ServiceException:
+            self._rollback()
+            raise
+
+        except Exception as e:
+            self._rollback()
+
+            log.error(
+                f"Error cancelling order "
+                f"{order_id}: {e}"
+            )
+
             raise ServiceException(
-                f"Can not complete order {order_id}"
+                "Could not cancel order"
             )
 
-        return True
+    # ==================================================
+    # Complete
+    # ==================================================
 
-    async def pay(self, order_id):
+    async def complete(self, order_id: int):
 
-        if order_id <= 0:
+        try:
+
+            self._change_status(
+                order_id,
+                OrderStatus.PAID.value,
+                OrderStatus.COMPLETED.value,
+            )
+
+            self.db.commit()
+
+            return True
+
+        except ServiceException:
+            self._rollback()
+            raise
+
+        except Exception as e:
+            self._rollback()
+
+            log.error(
+                f"Error completing order "
+                f"{order_id}: {e}"
+            )
+
             raise ServiceException(
-                "The order_id must be bigger than 0"
+                "Could not complete order"
             )
 
-        # --------------------------------------------------
-        # 1. Calculate total
-        # --------------------------------------------------
+    # ==================================================
+    # Pay
+    # ==================================================
 
-        total_price = self._calculate_total(order_id)
+    async def pay(self, order_id: int):
 
-        # --------------------------------------------------
-        # 2. Atomically:
-        #    PENDING -> PROCESSING
-        # --------------------------------------------------
+        try:
 
-        result = self.db.execute(
-            update(Order)
-            .where(
-                Order.id == order_id,
-                Order.status == OrderStatus.PENDING.value
+            total_price = self._calculate_total(
+                order_id
             )
-            .values(
-                status=OrderStatus.PROCESSING.value,
-                total_price=total_price,
+
+            result = self.db.execute(
+                update(Order)
+                .where(
+                    Order.id == order_id,
+                    Order.status == OrderStatus.PENDING.value,
+                )
+                .values(
+                    status=OrderStatus.PROCESSING.value,
+                    total_price=total_price,
+                )
             )
-        )
 
-        self.db.commit()
+            if result.rowcount != 1:
+                raise ServiceException(
+                    f"Can not process order {order_id}"
+                )
 
-        # Nobody was able to transition the order
-        if result.rowcount != 1:
+            self.db.commit()
+
+            log.debug(
+                f"Order {order_id} changed to PROCESSING"
+            )
+
+            log.debug(
+                f"Order {order_id} total price = "
+                f"{total_price}"
+            )
+
+        except ServiceException:
+            self._rollback()
+            raise
+
+        except Exception as e:
+            self._rollback()
+
+            log.error(
+                f"Error processing order "
+                f"{order_id}: {e}"
+            )
+
             raise ServiceException(
-                f"Can not process order {order_id}. "
-                f"Order may already be processing."
+                "Could not process order"
             )
-
-        log.debug(
-            f"Order {order_id} changed to PROCESSING"
-        )
-
-        log.debug(
-            f"Order {order_id} total price = {total_price}"
-        )
-
-        # --------------------------------------------------
-        # 3. External payment
-        # --------------------------------------------------
 
         await self._call_dargah_pardakht()
 
+    # ==================================================
+    # Complete Payment
+    # ==================================================
+
     async def complete_payment(
         self,
-        order_id,
-        payment_status
+        order_id: int,
+        payment_status: bool,
     ):
-
-        if order_id <= 0:
-            raise ServiceException(
-                "The order_id must be bigger than 0"
-            )
 
         if payment_status:
 
-            await self._success_paid_transaction(order_id)
+            await self._success_paid_transaction(
+                order_id
+            )
 
-            await self._process_after_payment(order_id)
+            await self._process_after_payment(
+                order_id
+            )
 
         else:
 
-            await self._failed_paid_transaction(order_id)
+            await self._failed_paid_transaction(
+                order_id
+            )
+
