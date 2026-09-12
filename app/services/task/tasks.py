@@ -3,6 +3,7 @@ import asyncio
 from services.order.order import OrderService
 from services.order.order_items import OrderItemsService
 from services.product.product import ProductService
+from services.customer.customer import CustomerService
 from utils.database.connection import get_db
 
 class Task:
@@ -25,6 +26,24 @@ class Task:
 # ----------------------------------------------
 
 
+class GetCustomerInfoTasks:
+    @staticmethod
+    async def run(*args, **kwargs):
+        with get_db() as db:
+            return await CustomerService(db=db).get_customer_info(**kwargs)
+
+
+
+class AddCustomerTasks:
+    @staticmethod
+    async def run(*args, **kwargs):
+        with get_db() as db:
+            return await CustomerService(db=db).add_customer(**kwargs)
+
+
+# ----------------------------------------------
+
+
 class RemoveProductFromBasketTasks:
     @staticmethod
     async def run(*args, **kwargs):
@@ -32,7 +51,7 @@ class RemoveProductFromBasketTasks:
         order_id = kwargs.get("order_id")
 
         with get_db() as db:
-            return await OrderItemsService(db=db).remove_product_from_basket(order_id=order_id, product_id=product_id)
+            return await OrderItemsService(db=db).remove_item(order_id=order_id, product_id=product_id)
 
 class AddProductToBasketTasks:
     @staticmethod
@@ -42,8 +61,8 @@ class AddProductToBasketTasks:
         order_id = kwargs.get("order_id")
 
         with get_db() as db:
-            return await OrderItemsService(db=db).add_product_to_basket(order_id=order_id, product_count=product_count, product_id=product_id)
-# -----------------------------------------------------
+            return await OrderItemsService(db=db).add_item(order_id=order_id, product_count=product_count, product_id=product_id)
+
 
 class AddNewEmptyOrderTasks:
     @staticmethod
@@ -53,6 +72,7 @@ class AddNewEmptyOrderTasks:
         with get_db() as db:
             return await OrderService(db=db).add_new_empty_order(customer_id=customer_id)
 
+# -----------------------------------------------------
 
 class GetOrdersTasks:
     # TODO -> for each request , do we need any new db obj
