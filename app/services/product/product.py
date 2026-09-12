@@ -1,47 +1,109 @@
 from sqlalchemy import select
-from models import Product
 from sqlalchemy.orm import Session
-from utils.exceptions import *
+
+from models import Product
+from utils.exceptions import ServiceException
+
 
 class ProductService:
 
     def __init__(self, db: Session):
         self.db = db
 
-    async def add_item(self, name: str, price: int, count:int):
-        if len(name)>200:
-            raise ServiceException("The product name is too long !")
-        if price<=0 or count<=0:
-            raise ServiceException("The price or product count must  bigger than 0 ")
-        product = Product(
-            name=name,
-            price=price,
-            count=count
-        )
+    # ==================================================
+    # Create
+    # ==================================================
 
-        self.db.add(product)
-        self.db.commit()
+    async def add_item(
+        self,
+        name: str,
+        price: int,
+        count: int,
+    ):
+        if len(name) > 200:
+            raise ServiceException(
+                "The product name is too long!"
+            )
 
-        return product
-    
-    
+        try:
+            product = Product(
+                name=name,
+                price=price,
+                count=count,
+            )
+
+            self.db.add(product)
+            self.db.commit()
+  
+
+            return True
+
+        except Exception as e:
+            self.db.rollback()
+
+            raise ServiceException(
+                f"Could not create product: {e}"
+            )
+
+    # ==================================================
+    # Get All
+    # ==================================================
+
     async def get_all_item(self):
-        product_list =  self.db.scalars(
-            select(Product)
-        ).all()
-        return {pr.id:{"Name":pr.name, "Price":pr.price, "Count":pr.count} for pr in product_list}
-            
-        
 
-    async def get_item(self, product_id: int):
-        if product_id<=0 :
-            raise ServiceException("The product_id  must bigger than 0 ")
-        product =  self.db.get(Product, product_id)
-        if not product:
-            raise ServiceException(f"The product with id {product_id} is not exist")
-        return {
-                    "Id":product.id, 
-                    "Name":product.name, 
-                    "Price":product.price, 
-                    "Count":product.count
-            } 
+        try:
+            products = self.db.scalars(
+                select(Product)
+            ).all()
+
+            return {
+                product.id: {
+                    "Name": product.name,
+                    "Price": product.price,
+                    "Count": product.count,
+                }
+                for product in products
+            }
+
+        except Exception as e:
+
+            raise ServiceException(
+                f"Could not get products: {e}"
+            )
+
+    # ==================================================
+    # Get One
+    # ==================================================
+
+    async def get_item(
+        self,
+        product_id: int,
+    ):
+
+        try:
+            product = self.db.get(
+                Product,
+                product_id,
+            )
+
+            if not product:
+                raise ServiceException(
+                    f"Product with id {product_id} "
+                    f"does not exist"
+                )
+
+            return {
+                "Id": product.id,
+                "Name": product.name,
+                "Price": product.price,
+                "Count": product.count,
+            }
+
+        except ServiceException:
+            raise
+
+        except Exception as e:
+
+            raise ServiceException(
+                f"Could not get product: {e}"
+            )
