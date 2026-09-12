@@ -313,7 +313,7 @@ class OrderService:
                     "CustomerID": order.customer_id,
                     "TotalPrice": order.total_price,
                     "OrderStatus": order.status,
-                    "OrderCreationTime": order.created_at,
+                    "OrderCreationTime": str(order.created_at),
                 }
                 for order in orders
             }
@@ -340,10 +340,11 @@ class OrderService:
                 )
 
             return {
+                "OrderId": order.id,
                 "CustomerID": order.customer_id,
                 "TotalPrice": order.total_price,
                 "OrderStatus": order.status,
-                "OrderCreationTime": order.created_at,
+                "OrderCreationTime": str(order.created_at),
             }
 
         except ServiceException:
@@ -387,7 +388,9 @@ class OrderService:
 
             self.db.commit()
 
-            return True
+            return {
+                "Id":order.id
+            }
 
         except ServiceException:
             self._rollback()
@@ -411,9 +414,11 @@ class OrderService:
     async def remove_order(self, order_id: int):
 
         try:
+            
             self._delete_order(order_id)
 
             self.db.commit()
+            return {"Id":order_id}
 
         except ServiceException:
             self._rollback()
@@ -453,7 +458,7 @@ class OrderService:
                 f"Order {order_id} was cancelled"
             )
 
-            return True
+            return {"Id":order_id}
 
         except ServiceException:
             self._rollback()
@@ -487,7 +492,7 @@ class OrderService:
 
             self.db.commit()
 
-            return True
+            return {"Id":order_id}
 
         except ServiceException:
             self._rollback()
@@ -544,7 +549,8 @@ class OrderService:
                 f"Order {order_id} total price = "
                 f"{total_price}"
             )
-
+            return {"Id":order_id}
+        
         except ServiceException:
             self._rollback()
             raise
@@ -582,10 +588,11 @@ class OrderService:
             await self._process_after_payment(
                 order_id
             )
-
+            return {"Id":order_id}
         else:
 
             await self._failed_paid_transaction(
                 order_id
             )
+            return {"Id":order_id}
 

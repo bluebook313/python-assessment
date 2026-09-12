@@ -41,5 +41,7 @@ class CustomerService:
         )
         self.db.add(new_customer)
         self.db.commit()
-        return True
 
+        return {
+            "Id":new_customer.id,
+        }

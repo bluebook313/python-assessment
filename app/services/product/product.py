@@ -1,4 +1,4 @@
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
 from models import Product
@@ -24,19 +24,45 @@ class ProductService:
             raise ServiceException(
                 "The product name is too long!"
             )
-
+        
         try:
-            product = Product(
-                name=name,
-                price=price,
-                count=count,
-            )
+            product_obj = self.db.scalars(
+                select(Product)
+                .where(
+                    Product.name == name,
+                )
+            ).first()
+             
+            if product_obj:
+                print(100*"=") 
+                self.db.execute(
+                    update(Product)
+                    .where(Product.id == product_obj.id)
+                    .values(
+                        # Ignore change the price 
+                        count=Product.count + count
+                    )
+                )
+                self.db.commit()
+                return {
+                    "Id":product_obj.id
+                }
+            
+            else:
+                print(100*"-") 
+                product = Product(
+                    name=name,
+                    price=price,
+                    count=count,
+                )
 
-            self.db.add(product)
-            self.db.commit()
-  
+                self.db.add(product)
+                self.db.commit()
+    
 
-            return True
+                return {
+                    "Id":product.id
+                }
 
         except Exception as e:
             self.db.rollback()

@@ -122,7 +122,7 @@ class OrderItemsService:
             # ------------------------------------------
             # Create order item
             # ------------------------------------------
-
+            # if r prevent duplication
             order_item = OrderItem(
                 order_id=order_id,
                 product_id=product_id,
@@ -135,8 +135,12 @@ class OrderItemsService:
             self.db.add(order_item)
 
             self.db.commit()
+            self.db.refresh(order_item)
 
-            return True
+            return {
+                "OrderId":order_id,
+                "OrderItemId":order_item.id,
+                }
 
         except ServiceException:
             self.db.rollback()
@@ -248,7 +252,11 @@ class OrderItemsService:
 
             self.db.commit()
 
-            return True
+            return {
+                "OrderId":order_id,
+                "OrderItemId":order_item.id,
+                }
+
 
         except ServiceException:
             self.db.rollback()
