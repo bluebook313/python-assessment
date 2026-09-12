@@ -6,26 +6,6 @@ from services.product.product import ProductService
 from services.customer.customer import CustomerService
 from utils.database.connection import get_db
 
-class Task:
-    # create tasktype 
-    # schadule task
-    # run task
-    # return task id
-
-
-    # def __init__(self):
-    #     self.task_id = task_id 
-
-    def create_task(self, *args, **kwargs):
-        pass
-    def schadule_task(self, *args, **kwargs):
-        pass
-    def execute_task(self, *args, **kwargs):
-        pass
-    
-# ----------------------------------------------
-
-
 class GetCustomerInfoTasks:
     @staticmethod
     async def run(*args, **kwargs):
@@ -47,30 +27,21 @@ class AddCustomerTasks:
 class RemoveProductFromBasketTasks:
     @staticmethod
     async def run(*args, **kwargs):
-        product_id = kwargs.get("product_id")
-        order_id = kwargs.get("order_id")
-
         with get_db() as db:
-            return await OrderItemsService(db=db).remove_item(order_id=order_id, product_id=product_id)
+            return await OrderItemsService(db=db).remove_item(**kwargs)
 
 class AddProductToBasketTasks:
     @staticmethod
     async def run(*args, **kwargs):
-        product_id = kwargs.get("product_id")
-        product_count = kwargs.get("product_count")
-        order_id = kwargs.get("order_id")
-
         with get_db() as db:
-            return await OrderItemsService(db=db).add_item(order_id=order_id, product_count=product_count, product_id=product_id)
+            return await OrderItemsService(db=db).add_item(**kwargs)
 
 
 class AddNewEmptyOrderTasks:
     @staticmethod
     async def run(*args, **kwargs):
-        customer_id = kwargs.get("customer_id")
-
         with get_db() as db:
-            return await OrderService(db=db).add_new_empty_order(customer_id=customer_id)
+            return await OrderService(db=db).add_new_empty_order(**kwargs)
 
 # -----------------------------------------------------
 
@@ -85,8 +56,7 @@ class GetOrderByIdTasks:
     @staticmethod
     async def run(*args, **kwargs):
         with get_db() as db:
-            with get_db() as db:
-                return await OrderService(db=db).get_item(kwargs.get("order_id"))
+            return await OrderService(db=db).get_item(**kwargs)
 
 # ----------------------------------------------
 
@@ -94,20 +64,20 @@ class PayOrderByIdTasks:
     @staticmethod
     async def run(*args, **kwargs):
         with get_db() as db:
-            return await OrderService(db=db).pay(kwargs.get("order_id"))
+            return await OrderService(db=db).pay(**kwargs)
 
 
 class CompletePaymentOperationTasks:
     @staticmethod
     async def run(*args, **kwargs):
         with get_db() as db:
-            return await OrderService(db=db).complete_payment(order_id=kwargs.get("order_id"), payment_status=kwargs.get("payment_status"))
+            return await OrderService(db=db).complete_payment(**kwargs)
 
 class CancelOrderByIdTasks:
     @staticmethod
     async def run(*args, **kwargs):
         with get_db() as db:
-            return await OrderService(db=db).cancel(kwargs.get("order_id"))
+            return await OrderService(db=db).cancel(**kwargs)
 
 
 
@@ -126,16 +96,12 @@ class GetProductByIdTasks:
     @staticmethod
     async def run(*args, **kwargs):
         with get_db() as db:
-            return await ProductService(db=db).get_item(kwargs.get("product_id"))
-
+            return await ProductService(db=db).get_item(**kwargs)
 
 
 class AddProductTasks:
     @staticmethod
     async def run(*args, **kwargs):
-        name = kwargs.get("name")
-        count = kwargs.get("count")
-        price = kwargs.get("price")
         with get_db() as db:
-            return await ProductService(db=db).add_item(name=name, count=count, price=price)
+            return await ProductService(db=db).add_item(**kwargs)
 

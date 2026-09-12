@@ -21,7 +21,6 @@ async def handle_task(task_class, **kwargs):
 
     except ServiceException as e:
         status = http_status.HTTP_400_BAD_REQUEST
-        print(1000*"-")
         details = str(e)
 
     except (TaskException, Exception) as e:
