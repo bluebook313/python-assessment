@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from api import router as api_router
-from schemas.config import ProjectBaseFolder
+from schemas.config import ServerIp, ServerPort, ReloadServer
 import uvicorn
 
 app = FastAPI(docs_url=None)
@@ -27,7 +27,7 @@ async def custom_swagger_ui():
 if __name__ == "__main__":
     uvicorn.run(
         "main:app",          # module:app_instance
-        host="0.0.0.0",
-        port=8000,
-        reload=True,         # auto-reload on code changes
+        host=ServerIp,
+        port=ServerPort,
+        reload=ReloadServer,         # auto-reload on code changes
     )
