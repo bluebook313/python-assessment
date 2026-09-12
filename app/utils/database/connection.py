@@ -1,6 +1,6 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from schemas.config import DATABASE_URL
+from schemas.config import DATABASE_URL, log
 from contextlib import contextmanager
 from sqlalchemy.ext.declarative import declarative_base
 
@@ -21,5 +21,7 @@ def get_db():
 
     try:
         yield db
+    except Exception as e:
+        log.error(f"Faild to connection to the database- Error : {e}")
     finally:
         db.close()
