@@ -11,7 +11,7 @@ from services.task.tasks import ( GetOrdersTasks, GetOrderByIdTasks,
                                   RemoveProductFromBasketTasks, CompletePaymentOperationTasks,
                                 )
 
-from utils.exceptions import ServiceException, TaskException                       
+from utils.exceptions import ServiceException                       
 
 
 async def handle_task(task_class, **kwargs):
@@ -28,7 +28,7 @@ async def handle_task(task_class, **kwargs):
         status = http_status.HTTP_400_BAD_REQUEST
         details = str(e)
 
-    except (TaskException, Exception) as e:
+    except Exception as e:
         status = http_status.HTTP_500_INTERNAL_SERVER_ERROR
         details = str(e)
 
