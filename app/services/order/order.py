@@ -4,6 +4,7 @@ from schemas.config import OrderStatus
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 from datetime import datetime
+from schemas.config import log
 import asyncio
 
 
@@ -19,7 +20,7 @@ class OrderService:
 # ----------------------------------------------  
 
     async def _failed_paid_transaction(self, order_id):
-        print("failed to pay mony for this transaction")
+        log.error("Failed to pay mony for this transaction")
         order_obj =  self.db.query(Order).filter(Order.id == order_id).first()
         order_obj.status = OrderStatus.FAILED.value
         self.db.commit()
@@ -31,17 +32,17 @@ class OrderService:
 
     async def _send_notification(self,order_id) -> None:
         # Call Shipping webhook
-        print(f"Notification sent for order {order_id}")
+        log.info(f"Notification sent for order {order_id}")
 
     async def _save_accounting(self, order_id) -> None:
         order_obj =  self.db.query(Order).filter(Order.id == order_id).first()
         order_obj.status = OrderStatus.COMPLETED.value
         self.db.commit()
-        print(f"Accounting saved for order {order_id}")
+        log.info(f"Accounting saved for order {order_id}")
 
     async def _send_to_shipping(self, order_id) -> None:
         # Call Shipping webhook
-        print(f"Order {order_id} sent to shipping")
+        log.info(f"Order {order_id} sent to shipping")
 
     def _calculate_total(self, order_id) -> float:
         order_obj =  self.db.query(OrderItem).filter(OrderItem.order_id == order_id).all()
@@ -52,8 +53,9 @@ class OrderService:
     
     async def _call_dargah_pardakht(self):
         # make request to darghah pardakht
-        print("Start to connection to payment getway")
+        log.info("Start to connection to payment getway")
         await asyncio.sleep(3)
+        log.info("Successfully called payment getway")
 
     async def _process_after_payment(self, order_id) -> None:
         steps = [
@@ -71,7 +73,7 @@ class OrderService:
         try:
             task.result()
         except Exception as e:
-            print(f"Background task failed: {e}")
+            log.error(f"Background task failed: {e}")
 
 # --------------------------
 # OrderService Busines Core
@@ -141,17 +143,17 @@ class OrderService:
         try:
             order_obj.status = OrderStatus.CANCELLED.value
             self.db.commit()
-            print(f"The orderid {order_id} was canceled by user ")
+            log.debug(f"The orderid {order_id} was canceled by user ")
             self.db.query(OrderItem).filter(OrderItem.order_id == order_id).delete()
             self.db.commit()
-            print(f"The product of order id {order_id} was flushed from basket   ")
+            log.debug(f"The product of order id {order_id} was flushed from basket   ")
             # new method :)
             # from sqlalchemy import delete
             # self.db.execute(delete(OrderItem).where(OrderItem.order_id == order_id))
             # self.db.commit()
             return True
         except Exception as e:
-            print(e)
+            log.error(e)
             # log.error(e)
             return False
     
@@ -187,16 +189,17 @@ class OrderService:
             raise ServiceException(f"Can not to complete order with status {order_obj.status} ")
         
         
-        print(f"Order find with id {order_obj.id}")
-        print(f"Order status is {order_obj.status}")
+        log.debug(f"Order find with id {order_obj.id}")
+        log.debug(f"Order status is {order_obj.status}")
         order_obj.status = OrderStatus.PROCESSING.value 
         self.db.commit()
-        print(f"Order status is {order_obj.status}")
-        print(f"Order total price is {order_obj.total_price}")
+        log.debug(f"Order status is {order_obj.status}")
+        log.debug(f"Order total price is {order_obj.total_price}")
         order_obj.total_price = self._calculate_total(order_id)
         self.db.commit()
-        print(f"Order total price is {order_obj.total_price}")
+        log.debug(f"Order total price is {order_obj.total_price}")
         await self._call_dargah_pardakht()
+
 
     async def complete_payment(self, order_id, payment_status) -> None:
         """
