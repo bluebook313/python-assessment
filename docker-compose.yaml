@@ -4,18 +4,16 @@ services:
       context: .
       dockerfile: Dockerfile
 
-    container_name: shopping-project
+    container_name: ${CONTAINER_NAME}
 
     ports:
-      - "8000:8000"
+      - "${SERVER_PORT}:${SERVER_PORT}"
 
     env_file:
       - .env
 
     volumes:
       - ./app:/app
-  
-
 
     restart: always
 
