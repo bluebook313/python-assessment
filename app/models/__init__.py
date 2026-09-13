@@ -1,4 +1,4 @@
-from utils.database.connection import Base, engine
+from utils.database.connection import engine
 from schemas.config import OrderStatus
 from sqlalchemy import (
     UniqueConstraint,
@@ -10,6 +10,11 @@ from sqlalchemy import (
     String,
 )
 
+from sqlalchemy.orm import DeclarativeBase
+
+
+class Base(DeclarativeBase):
+    pass   
 class Product(Base):
     __tablename__ = "products"
 

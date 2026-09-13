@@ -79,8 +79,8 @@ async def  add_product_to_basket(order_item_param: OrderItemStructure):
                             )
 
 @router.post("/orders/remove_product_from_basket")
-async def  remove_product_from_basket(product_id:int, order_id:int):
-    if order_id<=0 or product_id<=0:
+async def  remove_product_from_basket(product_id:int, order_id:int, count:int):
+    if order_id<=0 or product_id<=0 or count<=0:
         return CustomResponse.response(
                 status=http_status.HTTP_400_BAD_REQUEST,
                 details="input must bigger than 0",
@@ -89,7 +89,8 @@ async def  remove_product_from_basket(product_id:int, order_id:int):
     return await handle_task(   
                             task_class=RemoveProductFromBasketTasks, 
                             order_id=order_id, 
-                            product_id=product_id
+                            product_id=product_id,
+                            count=count
                             )
 
 @router.post("/orders/{order_id}/pay")

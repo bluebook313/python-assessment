@@ -8,7 +8,7 @@ from utils.exceptions import ServiceException
 class ProductService:
 
     def __init__(self, db: Session):
-        self.db = db
+        self.db  = db
 
     # ==================================================
     # Create
@@ -26,16 +26,17 @@ class ProductService:
             )
         
         try:
-            product_obj = self.db.scalars(
+            product_obj = await self.db.scalars(
                 select(Product)
                 .where(
                     Product.name == name,
                 )
-            ).first()
+            )
+            product_obj= product_obj.first()
              
             if product_obj:
                 print(100*"=") 
-                self.db.execute(
+                await self.db.execute(
                     update(Product)
                     .where(Product.id == product_obj.id)
                     .values(
@@ -43,7 +44,7 @@ class ProductService:
                         count=Product.count + count
                     )
                 )
-                self.db.commit()
+                await self.db.commit()
                 return {
                     "Id":product_obj.id
                 }
@@ -57,7 +58,7 @@ class ProductService:
                 )
 
                 self.db.add(product)
-                self.db.commit()
+                await self.db.commit()
     
 
                 return {
@@ -65,7 +66,7 @@ class ProductService:
                 }
 
         except Exception as e:
-            self.db.rollback()
+            await self.db.rollback()
 
             raise ServiceException(
                 f"Could not create product: {e}"
@@ -78,9 +79,11 @@ class ProductService:
     async def get_all_item(self):
 
         try:
-            products = self.db.scalars(
+            result = await self.db.scalars(
                 select(Product)
-            ).all()
+            )
+
+            products = result.all()
 
             return {
                 product.id: {
@@ -107,7 +110,7 @@ class ProductService:
     ):
 
         try:
-            product = self.db.get(
+            product = await self.db.get(
                 Product,
                 product_id,
             )
