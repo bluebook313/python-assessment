@@ -12,7 +12,7 @@ class OrderStatus(str, Enum):
     FAILED      =  "FAILED"
 
 
-DATABASE_URL = os.getenv("DATABASE_URL")
+DATABASE_URL = "sqlite:///orders.db"
 ServerIp=os.getenv("ServerIp")
 ServerPort=os.getenv("ServerPort")
 ReloadServer=os.getenv("ReloadServer")
