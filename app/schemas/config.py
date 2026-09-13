@@ -12,7 +12,8 @@ class OrderStatus(str, Enum):
     FAILED      =  "FAILED"
 
 
-DATABASE_URL = "sqlite:///orders.db"
+# DATABASE_URL = "sqlite:///orders.db"
+DATABASE_URL = "sqlite+aiosqlite:///./orders.db" # Asyncio use this path
 ServerIp=os.getenv("ServerIp")
 ServerPort=os.getenv("ServerPort")
 ReloadServer=os.getenv("ReloadServer")
