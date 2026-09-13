@@ -28,6 +28,6 @@ if __name__ == "__main__":
     uvicorn.run(
         "main:app",          # module:app_instance
         host=ServerIp,
-        port=ServerPort,
+        port=8000,
         reload=ReloadServer,         # auto-reload on code changes
-    )
+    )    
