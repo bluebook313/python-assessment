@@ -9,19 +9,19 @@ from schemas.config import OrderStatus
 class OrderItemsService:
 
     def __init__(self, db: Session):
-        self.db = db
+        self.db  = db
 
     # ==================================================
     # Helpers
     # ==================================================
 
-    def _change_item_quantity(
+    async def _change_item_quantity(
         self,
         order_id: int,
         product_id: int,
         quantity: int,
     ):
-        result = self.db.execute(
+        result = await self.db.execute(
             update(OrderItem)
             .where(
                 OrderItem.order_id == order_id,
@@ -35,12 +35,12 @@ class OrderItemsService:
                 "Order item does not exist"
             )
 
-    def _delete_item(
+    async def _delete_item(
         self,
         order_id: int,
         product_id: int,
     ):
-        result = self.db.execute(
+        result = await self.db.execute(
             delete(OrderItem)
             .where(
                 OrderItem.order_id == order_id,
@@ -73,12 +73,12 @@ class OrderItemsService:
             # Get order and product
             # ------------------------------------------
 
-            order = self.db.get(
+            order = await self.db.get(
                 Order,
                 order_id
             )
 
-            product = self.db.get(
+            product = await self.db.get(
                 Product,
                 product_id
             )
@@ -103,7 +103,7 @@ class OrderItemsService:
             # Atomic stock reservation
             # ------------------------------------------
 
-            result = self.db.execute(
+            result = await self.db.execute(
                 update(Product)
                 .where(
                     Product.id == product_id,
@@ -123,15 +123,16 @@ class OrderItemsService:
             # Create order item
             # ------------------------------------------
             # prevent duplication
-            order_item_obj = self.db.scalars(
+            order_item_obj = await self.db.scalars(
                 select(OrderItem).where(
                     OrderItem.order_id == order_id,
                     OrderItem.product_id == product_id,
                     
                 )
-            ).first()
+            )
+            order_item_obj = order_item_obj.first()
             if order_item_obj: # check if order exist update it instead of duplicate the row
-                self.db.execute(
+                await self.db.execute(
                     update(OrderItem)
                     .where(
                         OrderItem.id == order_item_obj.id,
@@ -152,17 +153,18 @@ class OrderItemsService:
                 )
 
                 self.db.add(order_item)
-            self.db.commit()
+                
+            await self.db.commit()
             return {
                 "OrderId":order_id,
                 }
 
         except ServiceException:
-            self.db.rollback()
+            await self.db.rollback()
             raise
 
         except Exception as e:
-            self.db.rollback()
+            await self.db.rollback()
             raise ServiceException(
                 f"Could not add product to basket: {e}"
             )
@@ -187,7 +189,7 @@ class OrderItemsService:
             # Get order
             # ------------------------------------------
 
-            order = self.db.get(
+            order = await self.db.get(
                 Order,
                 order_id
             )
@@ -207,13 +209,14 @@ class OrderItemsService:
             # Get order item
             # ------------------------------------------
 
-            order_item = self.db.scalars(
+            order_item = await self.db.scalars(
                 select(OrderItem)
                 .where(
                     OrderItem.order_id == order_id,
                     OrderItem.product_id == product_id,
                 )
-            ).first()
+            )
+            order_item= order_item.first()
 
             if not order_item:
                 raise ServiceException(
@@ -236,7 +239,7 @@ class OrderItemsService:
 
             if count == order_item.quantity:
 
-                self._delete_item(
+                await self._delete_item(
                     order_id,
                     product_id
                 )
@@ -247,7 +250,7 @@ class OrderItemsService:
 
             else:
 
-                self._change_item_quantity(
+                await self._change_item_quantity(
                     order_id,
                     product_id,
                     order_item.quantity - count
@@ -257,7 +260,7 @@ class OrderItemsService:
             # Return stock
             # ------------------------------------------
 
-            self.db.execute(
+            await self.db.execute(
                 update(Product)
                 .where(Product.id == product_id)
                 .values(
@@ -265,7 +268,7 @@ class OrderItemsService:
                 )
             )
 
-            self.db.commit()
+            await self.db.commit()
 
             return {
                 "OrderId":order_id,
@@ -274,11 +277,11 @@ class OrderItemsService:
 
 
         except ServiceException:
-            self.db.rollback()
+            await self.db.rollback()
             raise
 
         except Exception as e:
-            self.db.rollback()
+            await self.db.rollback()
             raise ServiceException(
                 f"Could not remove product from basket: {e}"
             )

@@ -1,28 +1,26 @@
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
-from schemas.config import DATABASE_URL, log
-from contextlib import contextmanager
-from sqlalchemy.ext.declarative import declarative_base
-
-engine = create_engine(
+from sqlalchemy.ext.asyncio import (
+    AsyncSession,
+    async_sessionmaker,
+    create_async_engine,
+)
+from schemas.config import DATABASE_URL
+from schemas.config import log
+engine = create_async_engine(
     DATABASE_URL,
-    connect_args={"check_same_thread": False},
+    echo=False,
 )
 
-orm_session = sessionmaker(bind=engine)
+AsyncSessionLocal = async_sessionmaker(
+    engine,
+    class_=AsyncSession,
+    expire_on_commit=False,
+)
 
-Base = declarative_base() 
 
-
-
-@contextmanager
-def get_db():
-    db = orm_session()
-
+async def get_db():
     try:
-        yield db
+        async with AsyncSessionLocal() as db:
+            yield db
     except Exception as e:
-        log.error(f"Faild to connection to the database- Error : {e}")
+        log.error(f"Error in connection to db")
         raise 
-    finally:
-        db.close()

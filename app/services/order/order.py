@@ -12,26 +12,26 @@ from schemas.config import OrderStatus, log
 class OrderService:
 
     def __init__(self, db: Session):
-        self.db = db
+        self.db  = db
 
     # ==================================================
     # Transaction Helper
     # ==================================================
 
-    def _rollback(self):
+    async def _rollback(self):
         try:
-            self.db.rollback()
+            await self.db.rollback()
         except Exception as e:
             log.error(f"Rollback failed: {e}")
 
-    def _change_status(
+    async def _change_status(
         self,
         order_id: int,
         from_status: str,
         to_status: str,
     ):
         try:
-            result = self.db.execute(
+            result = await self.db.execute(
                 update(Order)
                 .where(
                     Order.id == order_id,
@@ -60,10 +60,10 @@ class OrderService:
                 "Database error while changing order"
             )
 
-    def _delete_order_items(self, order_id: int):
+    async def _delete_order_items(self, order_id: int):
 
         try:
-            self.db.execute(
+            await self.db.execute(
                 delete(OrderItem)
                 .where(OrderItem.order_id == order_id)
             )
@@ -77,10 +77,10 @@ class OrderService:
                 "Could not delete order items"
             )
 
-    def _delete_order(self, order_id: int):
+    async def _delete_order(self, order_id: int):
 
         try:
-            result = self.db.execute(
+            result = await self.db.execute(
                 delete(Order)
                 .where(Order.id == order_id)
             )
@@ -101,13 +101,14 @@ class OrderService:
                 "Could not delete order"
             )
 
-    def _calculate_total(self, order_id: int) -> float:
+    async def _calculate_total(self, order_id: int) -> float:
 
         try:
-            items = self.db.scalars(
+            items = await self.db.scalars(
                 select(OrderItem)
                 .where(OrderItem.order_id == order_id)
-            ).all()
+            )
+            items = items.all()
 
             return sum(
                 item.total_order_price
@@ -134,20 +135,20 @@ class OrderService:
         )
 
         try:
-            self._change_status(
+            await self._change_status(
                 order_id,
                 OrderStatus.PROCESSING.value,
                 OrderStatus.FAILED.value,
             )
 
-            self.db.commit()
+            await self.db.commit()
 
         except ServiceException:
-            self._rollback()
+            await self._rollback()
             raise
 
         except Exception as e:
-            self._rollback()
+            await self._rollback()
 
             log.error(
                 f"Failed payment transaction "
@@ -161,20 +162,20 @@ class OrderService:
     async def _success_paid_transaction(self, order_id):
 
         try:
-            self._change_status(
+            await self._change_status(
                 order_id,
                 OrderStatus.PROCESSING.value,
                 OrderStatus.PAID.value,
             )
 
-            self.db.commit()
+            await self.db.commit()
 
         except ServiceException:
-            self._rollback()
+            await self._rollback()
             raise
 
         except Exception as e:
-            self._rollback()
+            await self._rollback()
 
             log.error(
                 f"Failed to complete payment "
@@ -220,24 +221,24 @@ class OrderService:
     async def _save_accounting(self, order_id):
 
         try:
-            self._change_status(
+            await self._change_status(
                 order_id,
                 OrderStatus.PAID.value,
                 OrderStatus.COMPLETED.value,
             )
 
-            self.db.commit()
+            await self.db.commit()
 
             log.info(
                 f"Accounting saved for order {order_id}"
             )
 
         except ServiceException:
-            self._rollback()
+            await self._rollback()
             raise
 
         except Exception as e:
-            self._rollback()
+            await self._rollback()
 
             log.error(
                 f"Accounting failed for order "
@@ -304,9 +305,10 @@ class OrderService:
     async def get_all_item(self):
 
         try:
-            orders = self.db.scalars(
+            orders = await self.db.scalars(
                 select(Order)
-            ).all()
+            )
+            orders= orders.all()
 
             return {
                 order.id: {
@@ -329,7 +331,7 @@ class OrderService:
     async def get_item(self, order_id: int):
 
         try:
-            order = self.db.get(
+            order = await self.db.get(
                 Order,
                 order_id
             )
@@ -369,7 +371,7 @@ class OrderService:
     ):
 
         try:
-            customer = self.db.get(
+            customer = await self.db.get(
                 Customer,
                 customer_id
             )
@@ -386,18 +388,18 @@ class OrderService:
 
             self.db.add(order)
 
-            self.db.commit()
+            await self.db.commit()
 
             return {
                 "Id":order.id
             }
 
         except ServiceException:
-            self._rollback()
+            await self._rollback()
             raise
 
         except Exception as e:
-            self._rollback()
+            await self._rollback()
 
             log.error(
                 f"Error creating order: {e}"
@@ -415,17 +417,17 @@ class OrderService:
 
         try:
             
-            self._delete_order(order_id)
+            await self._delete_order(order_id)
 
-            self.db.commit()
+            await self.db.commit()
             return {"Id":order_id}
 
         except ServiceException:
-            self._rollback()
+            await self._rollback()
             raise
 
         except Exception as e:
-            self._rollback()
+            await self._rollback()
 
             log.error(
                 f"Error removing order "
@@ -444,15 +446,15 @@ class OrderService:
 
         try:
 
-            self._change_status(
+            await self._change_status(
                 order_id,
-                OrderStatus.PROCESSING.value,
+                OrderStatus.PENDING.value,
                 OrderStatus.CANCELLED.value,
             )
+            
+            await self._delete_order_items(order_id)
 
-            self._delete_order_items(order_id)
-
-            self.db.commit()
+            await self.db.commit()
 
             log.debug(
                 f"Order {order_id} was cancelled"
@@ -461,11 +463,11 @@ class OrderService:
             return {"Id":order_id}
 
         except ServiceException:
-            self._rollback()
+            await self._rollback()
             raise
 
         except Exception as e:
-            self._rollback()
+            await self._rollback()
 
             log.error(
                 f"Error cancelling order "
@@ -484,22 +486,22 @@ class OrderService:
 
         try:
 
-            self._change_status(
+            await self._change_status(
                 order_id,
                 OrderStatus.PAID.value,
                 OrderStatus.COMPLETED.value,
             )
 
-            self.db.commit()
+            await self.db.commit()
 
             return {"Id":order_id}
 
         except ServiceException:
-            self._rollback()
+            await self._rollback()
             raise
 
         except Exception as e:
-            self._rollback()
+            await self._rollback()
 
             log.error(
                 f"Error completing order "
@@ -518,11 +520,11 @@ class OrderService:
 
         try:
 
-            total_price = self._calculate_total(
+            total_price = await self._calculate_total(
                 order_id
             )
 
-            result = self.db.execute(
+            result = await self.db.execute(
                 update(Order)
                 .where(
                     Order.id == order_id,
@@ -539,7 +541,7 @@ class OrderService:
                     f"Can not process order {order_id}"
                 )
 
-            self.db.commit()
+            await self.db.commit()
 
             log.debug(
                 f"Order {order_id} changed to PROCESSING"
@@ -552,11 +554,11 @@ class OrderService:
             return {"Id":order_id}
         
         except ServiceException:
-            self._rollback()
+            await self._rollback()
             raise
 
         except Exception as e:
-            self._rollback()
+            await self._rollback()
 
             log.error(
                 f"Error processing order "

@@ -1,3 +1,4 @@
+from sqlalchemy import select
 from models import Customer
 from sqlalchemy.orm import Session
 from utils.exceptions import ServiceException
@@ -6,7 +7,7 @@ from utils.exceptions import ServiceException
 class CustomerService:
 
     def __init__(self, db: Session):
-        self.db = db
+        self.db  = db
 
     async def get_customer_info(self, customer_id):
         """
@@ -17,7 +18,12 @@ class CustomerService:
         if not isinstance(customer_id, int):
             raise ServiceException("The customer_id must  integer ")
         
-        customer_obj = self.db.query(Customer).where(Customer.id == customer_id).first()
+        result = await self.db.execute(
+            select(Customer).where(Customer.id == customer_id)
+        )
+        customer_obj = result.scalar_one_or_none()
+
+        # customer_obj = await self.db.query(Customer).where(Customer.id == customer_id).first()
         if not customer_obj:
             raise ServiceException(f"The customer_id {customer_id} is not exist")
         return {
@@ -32,7 +38,12 @@ class CustomerService:
         """
         add new customer to database
         """
-        customer_obj = self.db.query(Customer).where(Customer.email == email).first()
+        
+        result = await self.db.execute(
+            select(Customer).where(Customer.email == email)
+        )
+
+        customer_obj = result.scalar_one_or_none()
         if customer_obj:
             raise ServiceException(f"The user with the email {email} exist.")
         new_customer = Customer(
@@ -40,7 +51,7 @@ class CustomerService:
             email=email,
         )
         self.db.add(new_customer)
-        self.db.commit()
+        await self.db.commit()
 
         return {
             "Id":new_customer.id,
