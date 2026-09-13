@@ -122,24 +122,39 @@ class OrderItemsService:
             # ------------------------------------------
             # Create order item
             # ------------------------------------------
-            # if r prevent duplication
-            order_item = OrderItem(
-                order_id=order_id,
-                product_id=product_id,
-                quantity=product_count,
-                total_order_price=(
-                    product_count * product.price
-                ),
-            )
+            # prevent duplication
+            order_item_obj = self.db.scalars(
+                select(OrderItem).where(
+                    OrderItem.order_id == order_id,
+                    OrderItem.product_id == product_id,
+                    
+                )
+            ).first()
+            if order_item_obj: # check if order exist update it instead of duplicate the row
+                self.db.execute(
+                    update(OrderItem)
+                    .where(
+                        OrderItem.id == order_item_obj.id,
+                    )
+                    .values(
+                        quantity=order_item_obj.quantity + product_count,
+                        total_order_price=order_item_obj.total_order_price + product_count*product.price
+                    )
+                )
+            else:
+                order_item = OrderItem(
+                    order_id=order_id,
+                    product_id=product_id,
+                    quantity=product_count,
+                    total_order_price=(
+                        product_count * product.price
+                    ),
+                )
 
-            self.db.add(order_item)
-
+                self.db.add(order_item)
             self.db.commit()
-            self.db.refresh(order_item)
-
             return {
                 "OrderId":order_id,
-                "OrderItemId":order_item.id,
                 }
 
         except ServiceException:
